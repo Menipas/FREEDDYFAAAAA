@@ -125,8 +125,7 @@ db = Database()
 
 # ────────────────── Основное приложение ──────────────────
 def main(page: ft.Page):
-    page.title = "Freddy Fazbear — Мобильная СУБД"
-
+    page.title = "Freddy Fazbear"
     def show_snack(msg, bg="#2ecc71"):
         sb = ft.SnackBar(content=ft.Text(msg, color=ft.Colors.WHITE), bgcolor=bg, open=True)
         page.overlay.append(sb)
@@ -724,11 +723,11 @@ def main(page: ft.Page):
         dlg = ft.AlertDialog(
             title=ft.Text("Freddy Fazbear DB", size=18, weight=ft.FontWeight.BOLD, color=Colors.ACCENT),
             content=ft.Column([
-                ft.Text("Автор: Иванов Иван Иванович", size=14, weight=ft.FontWeight.BOLD),
-                ft.Text("Группа: ИС-21  |  Курс: 2", size=12),
+                ft.Text("Автор: Кабушко Максим Николаевич", size=14, weight=ft.FontWeight.BOLD),
+                ft.Text("Группа: ИС-943  |  Курс: 2", size=12),
                 ft.Divider(color=Colors.BG_LIGHT),
                 ft.Text("Библиотеки:", size=12, weight=ft.FontWeight.BOLD),
-                ft.Text("  • flet — мобильный UI", size=12, color=Colors.FG_DIM),
+                ft.Text("  • flet — UI", size=12, color=Colors.FG_DIM),
                 ft.Text("  • sqlite3 — реляционная БД", size=12, color=Colors.FG_DIM),
                 ft.Text("  • openpyxl — экспорт Excel", size=12, color=Colors.FG_DIM),
                 ft.Text("  • fpdf2 — экспорт PDF", size=12, color=Colors.FG_DIM),
