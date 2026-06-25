@@ -54,8 +54,8 @@ jobs:
         if: matrix.name == 'apk'
         shell: bash
         run: |
-          # Сборка APK из корня репозитория (.)
-          uv run --with flet --with requests --with openpyxl --with fpdf2 flet build apk . -o build/apk --yes --verbose
+          # Явно указываем имя главного модуля без расширения .py
+          uv run --with flet --with requests --with openpyxl --with fpdf2 flet build apk . --module-name freddy_fazbear_mobile -o build/apk --yes --verbose
 
       - name: Переименование APK
         if: matrix.name == 'apk'
