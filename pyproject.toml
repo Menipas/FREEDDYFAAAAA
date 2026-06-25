@@ -16,3 +16,4 @@ org = "com.fazbear"
 
 [tool.flet.android]
 package_name = "com.fazbear.dbapp"
+icon = "asd.jpg"
