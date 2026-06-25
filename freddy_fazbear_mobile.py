@@ -126,6 +126,11 @@ db = Database()
 # ────────────────── Основное приложение ──────────────────
 def main(page: ft.Page):
     page.title = "Freddy Fazbear — Мобильная СУБД"
+
+    def show_snack(msg, bg="#2ecc71"):
+        sb = ft.SnackBar(content=ft.Text(msg, color=ft.Colors.WHITE), bgcolor=bg, open=True)
+        page.overlay.append(sb)
+        page.update()
     page.bgcolor = Colors.BG
     page.theme_mode = ft.ThemeMode.DARK
     page.window.width = 420
@@ -149,8 +154,8 @@ def main(page: ft.Page):
             alignment=ft.MainAxisAlignment.START,
         ),
         bgcolor=Colors.BG_MID,
-        padding=ft.padding.symmetric(16, 12),
-        border_radius=ft.border_radius.only(bottom_left=12, bottom_right=12),
+        padding=ft.padding.Padding(left=16, top=12, right=16, bottom=12),
+        border_radius=ft.BorderRadius.only(bottom_left=12, bottom_right=12),
     )
 
     # ─── Статус-бар ───
@@ -169,17 +174,22 @@ def main(page: ft.Page):
         horizontal_margin=8,
         column_spacing=8,
         divider_thickness=0.5,
-        border=ft.border.all(0.5, Colors.BG_LIGHT),
+        border=ft.Border(
+            left=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            top=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            right=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            bottom=ft.BorderSide(0.5, Colors.BG_LIGHT),
+        ),
         border_radius=8,
     )
 
     table_scroll = ft.Container(
-        content=ft.SingleChildScrollView(
-            scroll_direction=ft.ScrollDirection.HORIZONTAL,
-            content=data_table,
+        content=ft.Column(
+            [data_table],
+            scroll=ft.ScrollMode.AUTO,
         ),
         expand=True,
-        padding=ft.padding.symmetric(8, 0),
+        padding=ft.padding.Padding(left=8, top=0, right=8, bottom=0),
     )
 
     def rebuild_table():
@@ -194,6 +204,8 @@ def main(page: ft.Page):
                     )
                 )
         refresh()
+
+    selected_row_id = None
 
     def refresh():
         data = db.fetch_all()
@@ -218,11 +230,14 @@ def main(page: ft.Page):
                                 overflow=ft.TextOverflow.ELLIPSIS, max_lines=1)
                     )
                 )
+            row_id = list(row)[0]
+            is_selected = row_id == selected_row_id
             data_table.rows.append(
                 ft.DataRow(
                     cells=cells,
-                    on_select_changed=lambda e, r=row: on_row_select(list(r)),
-                    color={"": Colors.TREE_BG},
+                    on_select_change=lambda e, r=row: on_row_select(list(r)),
+                    color={"": Colors.ACCENT if is_selected else Colors.TREE_BG},
+                    selected=is_selected,
                 )
             )
 
@@ -245,14 +260,14 @@ def main(page: ft.Page):
         prefix_icon=ft.Icons.SEARCH,
         bgcolor=Colors.ENTRY_BG,
         color=Colors.FG,
-        hint_color=Colors.FG_DIM,
+        hint_style=ft.TextStyle(color=Colors.FG_DIM),
         border_color=Colors.BG_LIGHT,
         focused_border_color=Colors.ACCENT,
         expand=True,
         height=44,
         text_size=13,
         on_submit=lambda e: do_search(),
-        content_padding=ft.padding.symmetric(8, 12),
+        content_padding=ft.padding.Padding(left=8, top=12, right=8, bottom=12),
     )
 
     def do_search():
@@ -275,7 +290,7 @@ def main(page: ft.Page):
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
-        padding=ft.padding.symmetric(8, 8),
+        padding=ft.padding.Padding(left=8, top=8, right=8, bottom=8),
     )
 
     # ─── Фильтр столбцов ───
@@ -283,14 +298,14 @@ def main(page: ft.Page):
         hint_text="ID, Аттракцион, Посетитель...",
         bgcolor=Colors.ENTRY_BG,
         color=Colors.FG,
-        hint_color=Colors.FG_DIM,
+        hint_style=ft.TextStyle(color=Colors.FG_DIM),
         border_color=Colors.BG_LIGHT,
         focused_border_color=Colors.ACCENT,
         expand=True,
         height=44,
         text_size=13,
         on_submit=lambda e: apply_col_filter(),
-        content_padding=ft.padding.symmetric(8, 12),
+        content_padding=ft.padding.Padding(left=8, top=12, right=8, bottom=12),
     )
 
     def apply_col_filter():
@@ -329,7 +344,7 @@ def main(page: ft.Page):
             ],
             spacing=2,
         ),
-        padding=ft.padding.symmetric(8, 4),
+        padding=ft.padding.Padding(left=8, top=4, right=8, bottom=4),
     )
 
     # ─── Кнопки CRUD ───
@@ -339,42 +354,39 @@ def main(page: ft.Page):
     selected_record = None
 
     def on_row_select(row_data):
-        nonlocal selected_record
+        nonlocal selected_record, selected_row_id
         selected_record = row_data
+        selected_row_id = row_data[0]
+        refresh()
         open_dialog("Изменить запись", row_data)
 
     def delete_selected(_=None):
         if not selected_record:
-            page.snack_bar = ft.SnackBar(ft.Text("Выберите запись", color=Colors.WHITE), bgcolor=Colors.ACCENT)
-            page.snack_bar.open = True
-            page.update()
+            show_snack("Выберите запись", Colors.ACCENT)
             return
 
         def confirm_delete(_):
+            nonlocal selected_record, selected_row_id
             try:
                 db.delete(selected_record[0])
-                page.snack_bar = ft.SnackBar(ft.Text(f"Запись {selected_record[0]} удалена", color=Colors.WHITE),
-                                             bgcolor=Colors.ACCENT)
-                page.snack_bar.open = True
+                selected_record = None
+                selected_row_id = None
                 refresh()
+                page.pop_dialog()
+                show_snack(f"Запись удалена", Colors.ACCENT)
             except Exception as ex:
-                page.snack_bar = ft.SnackBar(ft.Text(f"Ошибка: {ex}", color=Colors.WHITE), bgcolor=Colors.ERROR)
-                page.snack_bar.open = True
-            page.update()
-            dlg.open = False
-            page.overlay.remove(dlg)
+                page.pop_dialog()
+                show_snack(f"Ошибка: {ex}", Colors.ERROR)
 
         dlg = ft.AlertDialog(
             title=ft.Text("Подтверждение"),
             content=ft.Text(f"Удалить запись {selected_record[0]}?"),
             actions=[
                 ft.TextButton("Да", on_click=confirm_delete),
-                ft.TextButton("Нет", on_click=lambda _: (setattr(dlg, 'open', False), page.overlay.remove(dlg), page.update())),
+                ft.TextButton("Нет", on_click=lambda _: page.pop_dialog()),
             ],
         )
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
+        page.show_dialog(dlg)
 
     # ─── Диалог добавления/изменения ───
     def open_dialog(title, record):
@@ -493,22 +505,14 @@ def main(page: ft.Page):
             try:
                 if record:
                     db.update(id_val, attraction, visitor, age, price, ttype, pdate)
-                    page.snack_bar = ft.SnackBar(ft.Text(f"Запись {id_val} обновлена", color=Colors.WHITE),
-                                                 bgcolor="#2ecc71")
                 else:
                     db.add(attraction, visitor, age, price, ttype, pdate)
-                    page.snack_bar = ft.SnackBar(ft.Text(f"Запись добавлена", color=Colors.WHITE),
-                                                 bgcolor="#2ecc71")
-                page.snack_bar.open = True
                 refresh()
+                page.pop_dialog()
+                show_snack(f"Запись {id_val} обновлена" if record else "Запись добавлена")
             except Exception as ex:
-                page.snack_bar = ft.SnackBar(ft.Text(f"Ошибка БД: {ex}", color=Colors.WHITE),
-                                             bgcolor=Colors.ERROR)
-                page.snack_bar.open = True
-
-            dlg.open = False
-            page.overlay.remove(dlg)
-            page.update()
+                page.pop_dialog()
+                show_snack(f"Ошибка БД: {ex}", Colors.ERROR)
 
         dlg = ft.AlertDialog(
             title=ft.Text(title, size=18, weight=ft.FontWeight.BOLD, color=Colors.ACCENT),
@@ -523,13 +527,10 @@ def main(page: ft.Page):
             ),
             actions=[ft.TextButton("Сохранить", on_click=save,
                                    style=ft.ButtonStyle(color=Colors.ACCENT)),
-                     ft.TextButton("Отмена", on_click=lambda _: (setattr(dlg, 'open', False),
-                                   page.overlay.remove(dlg), page.update()))],
+                     ft.TextButton("Отмена", on_click=lambda _: page.pop_dialog())],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
+        page.show_dialog(dlg)
 
     # ─── Отчёты ───
     def open_reports(_=None):
@@ -547,33 +548,25 @@ def main(page: ft.Page):
             ("Ценовой диапазон", report_price_range),
         ]
 
-        def on_report(e):
-            idx = e.control.selected_index
-            if idx is not None:
-                items[idx][1]()
-                nav.open = False
-                page.update()
-
-        nav = ft.NavigationBar(
-            selected_index=None,
-            destinations=[
-                ft.NavigationBarDestination(icon=ft.Icons.BAR_CHART, label=label) for label, _ in items
-            ],
-            on_change=on_report,
-            bgcolor=Colors.BG_MID,
-            indicator_color=Colors.ACCENT,
-            height=500,
-        )
+        report_list = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
+        for label, func in items:
+            def make_click(f=func):
+                def click(_):
+                    page.pop_dialog()
+                    f()
+                return click
+            report_list.controls.append(
+                ft.Button(content=label, icon=ft.Icons.BAR_CHART,
+                          on_click=make_click(), bgcolor=Colors.BG_LIGHT,
+                          color=Colors.FG, width=320, height=38)
+            )
 
         dlg = ft.AlertDialog(
             title=ft.Text("Отчёты", size=18, weight=ft.FontWeight.BOLD, color=Colors.ACCENT),
-            content=ft.Container(content=nav, width=360, height=520),
-            actions=[ft.TextButton("Закрыть", on_click=lambda _: (setattr(dlg, 'open', False),
-                                   page.overlay.remove(dlg), page.update()))],
+            content=ft.Container(content=report_list, width=360, height=450),
+            actions=[ft.TextButton("Закрыть", on_click=lambda _: page.pop_dialog())],
         )
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
+        page.show_dialog(dlg)
 
     def show_report(title, headers, rows):
         cols = [ft.DataColumn(ft.Text(h, size=11, weight=ft.FontWeight.BOLD, color=Colors.FG)) for h in headers]
@@ -586,7 +579,12 @@ def main(page: ft.Page):
                            heading_row_color=Colors.BG_LIGHT,
                            data_row_color={"": Colors.TREE_BG},
                            divider_thickness=0.5,
-                           border=ft.border.all(0.5, Colors.BG_LIGHT),
+                           border=ft.Border(
+            left=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            top=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            right=ft.BorderSide(0.5, Colors.BG_LIGHT),
+            bottom=ft.BorderSide(0.5, Colors.BG_LIGHT),
+        ),
                            column_spacing=8)
 
         def export_excel(_):
@@ -600,13 +598,9 @@ def main(page: ft.Page):
                     ws.append([str(v) for v in row])
                 path = os.path.join(APP_DIR, f"{title}.xlsx")
                 wb.save(path)
-                page.snack_bar = ft.SnackBar(ft.Text(f"Excel: {path}", color=Colors.WHITE), bgcolor="#2ecc71")
-                page.snack_bar.open = True
-                page.update()
+                show_snack(f"Excel: {path}")
             except Exception as ex:
-                page.snack_bar = ft.SnackBar(ft.Text(f"Ошибка: {ex}", color=Colors.WHITE), bgcolor=Colors.ERROR)
-                page.snack_bar.open = True
-                page.update()
+                show_snack(f"Ошибка: {ex}", Colors.ERROR)
 
         def export_pdf(_):
             try:
@@ -634,40 +628,30 @@ def main(page: ft.Page):
                     pdf.ln()
                 path = os.path.join(APP_DIR, f"{title}.pdf")
                 pdf.output(path)
-                page.snack_bar = ft.SnackBar(ft.Text(f"PDF: {path}", color=Colors.WHITE), bgcolor="#2ecc71")
-                page.snack_bar.open = True
-                page.update()
+                show_snack(f"PDF: {path}")
             except Exception as ex:
-                page.snack_bar = ft.SnackBar(ft.Text(f"Ошибка: {ex}", color=Colors.WHITE), bgcolor=Colors.ERROR)
-                page.snack_bar.open = True
-                page.update()
+                show_snack(f"Ошибка: {ex}", Colors.ERROR)
 
         report_dlg = ft.AlertDialog(
             title=ft.Text(title, size=16, weight=ft.FontWeight.BOLD, color=Colors.ACCENT),
             content=ft.Container(
-                content=ft.SingleChildScrollView(
-                    scroll_direction=ft.ScrollDirection.BOTH,
-                    child=ft.Column([
-                        ft.Container(content=tbl, padding=4),
-                        ft.Row([
-                            ft.ElevatedButton("Excel", icon=ft.Icons.TABLE_CHART,
-                                              on_click=export_excel, bgcolor=Colors.BG_LIGHT,
-                                              color=Colors.FG),
-                            ft.ElevatedButton("PDF", icon=ft.Icons.PICTURE_AS_PDF,
-                                              on_click=export_pdf, bgcolor=Colors.BG_LIGHT,
-                                              color=Colors.FG),
-                        ], alignment=ft.MainAxisAlignment.CENTER),
-                    ]),
-                ),
+                content=ft.Column([
+                    ft.Container(content=tbl, padding=4),
+                    ft.Row([
+                        ft.Button("Excel", icon=ft.Icons.TABLE_CHART,
+                                          on_click=export_excel, bgcolor=Colors.BG_LIGHT,
+                                          color=Colors.FG),
+                        ft.Button("PDF", icon=ft.Icons.PICTURE_AS_PDF,
+                                          on_click=export_pdf, bgcolor=Colors.BG_LIGHT,
+                                          color=Colors.FG),
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                ], scroll=ft.ScrollMode.AUTO),
                 width=380,
                 height=500,
             ),
-            actions=[ft.TextButton("Закрыть", on_click=lambda _: (setattr(report_dlg, 'open', False),
-                                   page.overlay.remove(report_dlg), page.update()))],
+            actions=[ft.TextButton("Закрыть", on_click=lambda _: page.pop_dialog())],
         )
-        page.overlay.append(report_dlg)
-        report_dlg.open = True
-        page.update()
+        page.show_dialog(report_dlg)
 
     def report_revenue_total():
         r = db.query("SELECT SUM(price) AS total FROM tickets")
@@ -749,37 +733,36 @@ def main(page: ft.Page):
                 ft.Text("  • openpyxl — экспорт Excel", size=12, color=Colors.FG_DIM),
                 ft.Text("  • fpdf2 — экспорт PDF", size=12, color=Colors.FG_DIM),
             ], spacing=4),
-            actions=[ft.TextButton("Закрыть", on_click=lambda _: (setattr(dlg, 'open', False),
-                                   page.overlay.remove(dlg), page.update()))],
+            actions=[ft.TextButton("Закрыть", on_click=lambda _: page.pop_dialog())],
         )
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
+        page.show_dialog(dlg)
 
     # ─── Нижняя панель ───
     bottom_bar = ft.Container(
         content=ft.Row(
             [
-                ft.ElevatedButton("Добавить", icon=ft.Icons.ADD, on_click=open_add_dialog,
+                ft.Button("Добавить", icon=ft.Icons.ADD, on_click=open_add_dialog,
                                   bgcolor=Colors.ACCENT, color=Colors.WHITE,
-                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(8), padding=12)),
-                ft.ElevatedButton("Удалить", icon=ft.Icons.DELETE, on_click=delete_selected,
+                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), padding=12)),
+                ft.Button("Удалить", icon=ft.Icons.DELETE, on_click=delete_selected,
                                   bgcolor=Colors.BG_LIGHT, color=Colors.FG,
-                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(8), padding=12)),
-                ft.ElevatedButton("Отчёты", icon=ft.Icons.BAR_CHART, on_click=open_reports,
+                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), padding=12)),
+                ft.Button("Отчёты", icon=ft.Icons.BAR_CHART, on_click=open_reports,
                                   bgcolor=Colors.BG_LIGHT, color=Colors.FG,
-                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(8), padding=12)),
+                                  style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), padding=12)),
                 ft.IconButton(ft.Icons.INFO_OUTLINE, icon_color=Colors.FG_DIM,
                               on_click=show_about, icon_size=22),
             ],
             alignment=ft.MainAxisAlignment.SPACE_EVENLY,
         ),
         bgcolor=Colors.BG_MID,
-        padding=ft.padding.symmetric(8, 8),
-        border_radius=ft.border_radius.only(top_left=12, top_right=12),
+        padding=ft.padding.Padding(left=8, top=8, right=8, bottom=8),
+        border_radius=ft.BorderRadius.only(top_left=12, top_right=12),
     )
 
     # ─── Сборка страницы ───
+    rebuild_table()
+
     page.add(
         ft.Column(
             [
@@ -789,7 +772,7 @@ def main(page: ft.Page):
                 table_scroll,
                 ft.Container(
                     content=ft.Row([status_text, count_text], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    padding=ft.padding.symmetric(12, 4),
+                    padding=ft.padding.Padding(left=12, top=4, right=12, bottom=4),
                 ),
                 bottom_bar,
             ],
@@ -798,8 +781,6 @@ def main(page: ft.Page):
         )
     )
 
-    rebuild_table()
-
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
