@@ -1,0 +1,18 @@
+[project]
+name = "freddy-fazbear-mobile"
+version = "1.0.0"
+description = "Мобильная СУБД для учета билетов в Freddy Fazbear Pizza"
+dependencies = [
+    "flet",
+    "requests",
+    "openpyxl",
+    "fpdf2"
+]
+
+[tool.flet]
+product = "Freddy Fazbear Mobile"
+company = "Fazbear Entertainment"
+org = "com.fazbear"
+
+[tool.flet.android]
+package_name = "com.fazbear.dbapp"
