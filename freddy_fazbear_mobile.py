@@ -533,36 +533,55 @@ def main(page: ft.Page):
 
     # ─── Отчёты ───
     def open_reports(_=None):
-        items = [
-            ("Общая выручка", report_revenue_total),
-            ("Выручка по типу", report_revenue_by_type),
-            ("Средний чек", report_avg_price),
-            ("Посетители по типу", report_by_ticket_type),
-            ("Посетители по возрасту", report_by_age),
-            ("Популярность аттракционов", report_popularity),
-            ("Доход по аттракционам", report_attraction_revenue),
-            ("Продажи по датам", report_sales_by_date),
-            ("Дорогие билеты", report_expensive),
-            ("Топ посетителей", report_top_visitors),
-            ("Ценовой диапазон", report_price_range),
-        ]
+        content_col = ft.Column(spacing=2, scroll=ft.ScrollMode.AUTO)
+        expanded_cat = {"val": None}
 
-        report_list = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
-        for label, func in items:
-            def make_click(f=func):
-                def click(_):
-                    page.pop_dialog()
-                    f()
-                return click
-            report_list.controls.append(
-                ft.Button(content=label, icon=ft.Icons.BAR_CHART,
-                          on_click=make_click(), bgcolor=Colors.BG_LIGHT,
-                          color=Colors.FG, width=320, height=38)
-            )
+        def rebuild():
+            content_col.controls.clear()
+            for cat_name, items in report_tree.items():
+                is_open = expanded_cat["val"] == cat_name
+                arrow = ft.Icon(ft.Icons.ARROW_DROP_DOWN if is_open else ft.Icons.ARROW_RIGHT,
+                                color=Colors.ACCENT, size=18)
+
+                def make_toggle(cn=cat_name):
+                    def toggle(_):
+                        expanded_cat["val"] = cn if expanded_cat["val"] != cn else None
+                        rebuild()
+                    return toggle
+
+                content_col.controls.append(
+                    ft.Container(
+                        content=ft.Row([arrow, ft.Text(cat_name, size=12, weight=ft.FontWeight.BOLD,
+                                                        color=Colors.ACCENT, expand=True)],
+                                       vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                        bgcolor=Colors.BG_MID, border_radius=6,
+                        padding=ft.padding.Padding(left=6, top=4, right=6, bottom=4),
+                        on_click=make_toggle(), ink=True,
+                    ))
+                if is_open:
+                    for label, func in items:
+                        def make_click(f=func):
+                            def click(_):
+                                page.pop_dialog()
+                                f()
+                            return click
+                        content_col.controls.append(
+                            ft.Container(
+                                content=ft.Row([
+                                    ft.Icon(ft.Icons.BAR_CHART, size=14, color=Colors.FG_DIM),
+                                    ft.Text(label, size=11, color=Colors.FG, expand=True),
+                                ]),
+                                padding=ft.padding.Padding(left=28, top=3, right=6, bottom=3),
+                                border_radius=6, bgcolor=Colors.TREE_BG,
+                                on_click=make_click(), ink=True,
+                            ))
+            page.update()
+
+        rebuild()
 
         dlg = ft.AlertDialog(
             title=ft.Text("Отчёты", size=18, weight=ft.FontWeight.BOLD, color=Colors.ACCENT),
-            content=ft.Container(content=report_list, width=360, height=450),
+            content=ft.Container(content=content_col, width=360, height=450),
             actions=[ft.TextButton("Закрыть", on_click=lambda _: page.pop_dialog())],
         )
         page.show_dialog(dlg)
@@ -716,7 +735,31 @@ def main(page: ft.Page):
         x = r[0]
         show_report("Ценовой диапазон", ["Метрика", "Значение"],
                     [["Мин. цена", f"{x[0]:,.2f} ₽"], ["Макс. цена", f"{x[1]:,.2f} ₽"],
-                     ["Средняя цена", f"{x[2]:,.2f} ₽"]])
+                      ["Средняя цена", f"{x[2]:,.2f} ₽"]])
+
+    report_tree = {
+        "1. Финансовые отчёты": [
+            ("Общая выручка", report_revenue_total),
+            ("Выручка по типу билета", report_revenue_by_type),
+            ("Средний чек", report_avg_price),
+        ],
+        "2. Посещаемость": [
+            ("Посетители по типу билета", report_by_ticket_type),
+            ("Посетители по возрасту", report_by_age),
+        ],
+        "3. Аттракционы": [
+            ("Популярность аттракционов", report_popularity),
+            ("Доход по аттракционам", report_attraction_revenue),
+        ],
+        "4. Билеты": [
+            ("Продажи по датам", report_sales_by_date),
+            ("Дорогие билеты", report_expensive),
+        ],
+        "5. Аналитика": [
+            ("Топ посетителей", report_top_visitors),
+            ("Ценовой диапазон", report_price_range),
+        ],
+    }
 
     # ─── Об авторе ───
     def show_about(_=None):
